@@ -23,7 +23,7 @@ import java.util.Locale
 @OptIn(ExperimentalCoroutinesApi::class)
 class StockViewModel(private val repository: StockRepository) : ViewModel() {
 
-    val categories = listOf("Dry Items", "Chilled Items", "Frozen Items", "Bar Items")
+    val categories = listOf("Dry Items", "Chilled Items", "Frozen Items", "Bar Items", "Packaging Items", "Chemical Items")
 
     private val _selectedCategory = MutableStateFlow("Dry Items")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()

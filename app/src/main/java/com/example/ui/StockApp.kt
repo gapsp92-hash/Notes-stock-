@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inventory
 import androidx.compose.material.icons.outlined.LocalBar
 import androidx.compose.material3.*
@@ -48,6 +49,68 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+data class CategoryTheme(
+    val backgroundColor: Color,
+    val borderColor: Color,
+    val textColor: Color,
+    val badgeBgColor: Color,
+    val iconColor: Color
+)
+
+fun getCategoryTheme(category: String): CategoryTheme {
+    return when {
+        category.contains("Dry", ignoreCase = true) -> CategoryTheme(
+            backgroundColor = Color(0xFFFEF3C7), // warm amber-100
+            borderColor = Color(0xFFFDE68A),     // amber-200
+            textColor = Color(0xFF92400E),       // amber-800
+            badgeBgColor = Color(0xFFF59E0B),    // amber-500
+            iconColor = Color(0xFFD97706)        // amber-600
+        )
+        category.contains("Chilled", ignoreCase = true) -> CategoryTheme(
+            backgroundColor = Color(0xFFE0F2FE), // cyan/sky-100
+            borderColor = Color(0xFFBAE6FD),     // sky-200
+            textColor = Color(0xFF0369A1),       // sky-800
+            badgeBgColor = Color(0xFF0EA5E9),    // sky-500
+            iconColor = Color(0xFF0284C7)        // sky-600
+        )
+        category.contains("Frozen", ignoreCase = true) -> CategoryTheme(
+            backgroundColor = Color(0xFFE0E7FF), // indigo-100
+            borderColor = Color(0xFFC7D2FE),     // indigo-200
+            textColor = Color(0xFF3730A3),       // indigo-800
+            badgeBgColor = Color(0xFF6366F1),    // indigo-500
+            iconColor = Color(0xFF4F46E5)        // indigo-600
+        )
+        category.contains("Bar", ignoreCase = true) -> CategoryTheme(
+            backgroundColor = Color(0xFFFFE4E6), // rose/wine-100
+            borderColor = Color(0xFFFECDD3),     // rose-200
+            textColor = Color(0xFF9F1239),       // rose-800
+            badgeBgColor = Color(0xFFF43F5E),    // rose-500
+            iconColor = Color(0xFFE11D48)        // rose-600
+        )
+        category.contains("Packaging", ignoreCase = true) -> CategoryTheme(
+            backgroundColor = Color(0xFFD1FAE5), // emerald/green-100
+            borderColor = Color(0xFFA7F3D0),     // emerald-200
+            textColor = Color(0xFF065F46),       // emerald-800
+            badgeBgColor = Color(0xFF10B981),    // emerald-500
+            iconColor = Color(0xFF059669)        // emerald-600
+        )
+        category.contains("Chemical", ignoreCase = true) -> CategoryTheme(
+            backgroundColor = Color(0xFFF3E8FF), // purple-100
+            borderColor = Color(0xFFE9D5FF),     // purple-200
+            textColor = Color(0xFF6B21A8),       // purple-800
+            badgeBgColor = Color(0xFFA855F7),    // purple-500
+            iconColor = Color(0xFF9333EA)        // purple-600
+        )
+        else -> CategoryTheme(
+            backgroundColor = Color(0xFFF1F5F9), // slate-100
+            borderColor = Color(0xFFE2E8F0),     // slate-200
+            textColor = Color(0xFF334155),       // slate-700
+            badgeBgColor = Color(0xFF64748B),    // slate-500
+            iconColor = Color(0xFF475569)        // slate-600
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
@@ -62,7 +125,8 @@ fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
     var showAdjustStockDialog by remember { mutableStateOf<StockItem?>(null) }
     var showDeleteConfirmDialog by remember { mutableStateOf<StockItem?>(null) }
     var showShareSyncDialog by remember { mutableStateOf(false) }
-    var activeTab by remember { mutableStateOf("inventory") } // "inventory" or "history"
+    var activeTab by remember { mutableStateOf("home") } // "home", "inventory" or "history"
+    var selectedCategoryForDetail by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -72,6 +136,25 @@ fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
                 tonalElevation = 8.dp,
                 windowInsets = WindowInsets.navigationBars
             ) {
+                NavigationBarItem(
+                    selected = activeTab == "home",
+                    onClick = {
+                        activeTab = "home"
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = if (activeTab == "home") Icons.Default.Home else Icons.Outlined.Home,
+                            contentDescription = "Home"
+                        )
+                    },
+                    label = { Text("Home") },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        indicatorColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
+                    ),
+                    modifier = Modifier.testTag("nav_home")
+                )
                 NavigationBarItem(
                     selected = activeTab == "inventory",
                     onClick = { activeTab = "inventory" },
@@ -143,7 +226,7 @@ fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
                     .fillMaxWidth()
                     .background(Color.White)
                     .border(width = 1.dp, color = Color(0xFFEFF6FF), shape = RoundedCornerShape(0.dp)) // border-blue-50
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -204,30 +287,49 @@ fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
                 }
             }
 
-            if (activeTab == "inventory") {
-                // Dashboard summary for low stock with dynamic total types
-                LowStockSummarySection(lowStockItems = lowStockItems, totalItemsCount = allItems.size)
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Separate categories switcher
-                CategorySelectorRow(
-                    selectedCategory = selectedCategory,
-                    onCategorySelected = { viewModel.selectCategory(it) },
-                    categories = viewModel.categories
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Active stock list for selected category
-                CategoryItemsList(
-                    items = itemsInSelectedCategory,
-                    onAdjustStock = { showAdjustStockDialog = it },
-                    onDelete = { showDeleteConfirmDialog = it }
-                )
-            } else {
-                // Movement history log ("previous data")
-                PreviousMovementsLogSection(transactions = allTransactions)
+            when (activeTab) {
+                "home" -> {
+                    HomeScreen(
+                        lowStockItems = lowStockItems,
+                        totalItemsCount = allItems.size,
+                        allTransactions = allTransactions,
+                        categories = viewModel.categories,
+                        allItems = allItems,
+                        onSelectCategory = { cat ->
+                            viewModel.selectCategory(cat)
+                            selectedCategoryForDetail = cat
+                            activeTab = "inventory"
+                        },
+                        onViewAllTransactions = {
+                            activeTab = "history"
+                        }
+                    )
+                }
+                "inventory" -> {
+                    if (selectedCategoryForDetail == null) {
+                        CategoryCardList(
+                            categories = viewModel.categories,
+                            allItems = allItems,
+                            onCategoryClick = { category ->
+                                viewModel.selectCategory(category)
+                                selectedCategoryForDetail = category
+                            }
+                        )
+                    } else {
+                        val currentCategory = selectedCategoryForDetail!!
+                        CategoryDetailView(
+                            category = currentCategory,
+                            items = itemsInSelectedCategory,
+                            onBack = { selectedCategoryForDetail = null },
+                            onAdjustStock = { showAdjustStockDialog = it },
+                            onDelete = { showDeleteConfirmDialog = it },
+                            onAddItem = { showAddItemDialog = true }
+                        )
+                    }
+                }
+                "history" -> {
+                    PreviousMovementsLogSection(transactions = allTransactions)
+                }
             }
         }
     }
@@ -291,6 +393,327 @@ fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
         ShareSyncDialog(
             viewModel = viewModel,
             onDismiss = { showShareSyncDialog = false }
+        )
+    }
+}
+
+// Home Screen showing overview dashboard, low stock summary & recent movements
+@Composable
+fun HomeScreen(
+    lowStockItems: List<StockItem>,
+    totalItemsCount: Int,
+    allTransactions: List<StockTransaction>,
+    categories: List<String>,
+    allItems: List<StockItem>,
+    onSelectCategory: (String) -> Unit,
+    onViewAllTransactions: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 80.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Low Stock Alert Dashboard Panel
+        item {
+            LowStockSummarySection(
+                lowStockItems = lowStockItems,
+                totalItemsCount = totalItemsCount
+            )
+        }
+
+        // Daily Movements & Activity Log Section
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "DAILY MOVEMENTS",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 1.2.sp
+                        )
+                        Text(
+                            text = "Recent Stock In & Out Activity",
+                            color = Color(0xFF1E293B),
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 16.sp
+                        )
+                    }
+
+                    TextButton(onClick = onViewAllTransactions) {
+                        Text("View All", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (allTransactions.isEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.dp, Color(0xFFEFF6FF))
+                    ) {
+                        Text(
+                            text = "No recent stock movements recorded today.",
+                            fontSize = 12.sp,
+                            color = Color(0xFF94A3B8),
+                            modifier = Modifier.padding(20.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        allTransactions.take(5).forEach { tx ->
+                            TransactionRow(tx = tx)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Category selection list with clean vertical color box cards
+@Composable
+fun CategoryCardList(
+    categories: List<String>,
+    allItems: List<StockItem>,
+    onCategoryClick: (String) -> Unit
+) {
+    LazyColumn(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        item {
+            Column(modifier = Modifier.padding(bottom = 4.dp)) {
+                Text(
+                    text = "INVENTORY CATEGORIES",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    letterSpacing = 1.2.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Select Category to View Items",
+                    color = Color(0xFF1E293B),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 18.sp
+                )
+            }
+        }
+
+        items(categories) { category ->
+            val theme = getCategoryTheme(category)
+            val icon = getCategoryIcon(category)
+            val catItems = allItems.filter { it.category.equals(category, ignoreCase = true) }
+            val lowStockCount = catItems.count { it.quantity <= it.minLimit }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onCategoryClick(category) }
+                    .testTag("category_card_${category.replace(" ", "_")}"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = theme.backgroundColor),
+                border = BorderStroke(1.dp, theme.borderColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(theme.badgeBgColor.copy(alpha = 0.18f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = theme.iconColor,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column {
+                            Text(
+                                text = category,
+                                color = theme.textColor,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${catItems.size} items registered",
+                                color = theme.textColor.copy(alpha = 0.75f),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (lowStockCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFEF4444))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "$lowStockCount Low",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Open $category",
+                            tint = theme.textColor.copy(alpha = 0.6f),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Category Detail View showing item names & inventory inside selected category
+@Composable
+fun CategoryDetailView(
+    category: String,
+    items: List<StockItem>,
+    onBack: () -> Unit,
+    onAdjustStock: (StockItem) -> Unit,
+    onDelete: (StockItem) -> Unit,
+    onAddItem: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredItems = items.filter { it.name.contains(searchQuery, ignoreCase = true) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // Back Header Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(1.dp, Color(0xFFE2E8F0), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back to Categories",
+                        tint = Color(0xFF1E293B)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = category,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp,
+                        color = Color(0xFF1E293B)
+                    )
+                    Text(
+                        text = "${items.size} registered items",
+                        fontSize = 11.sp,
+                        color = Color(0xFF64748B)
+                    )
+                }
+            }
+
+            Button(
+                onClick = onAddItem,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Add Item", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // Search bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Search $category items...", fontSize = 13.sp) },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = Color(0xFF94A3B8)
+                )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8))
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 10.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = Color.White,
+                focusedContainerColor = Color.White,
+                unfocusedBorderColor = Color(0xFFE2E8F0),
+                focusedBorderColor = MaterialTheme.colorScheme.primary
+            ),
+            singleLine = true
+        )
+
+        // Item List
+        CategoryItemsList(
+            items = filteredItems,
+            onAdjustStock = onAdjustStock,
+            onDelete = onDelete
         )
     }
 }
@@ -1312,6 +1735,8 @@ fun getCategoryIcon(category: String): ImageVector {
         category.contains("Chilled", ignoreCase = true) -> Icons.Default.Kitchen
         category.contains("Frozen", ignoreCase = true) -> Icons.Default.SevereCold
         category.contains("Bar", ignoreCase = true) -> Icons.Default.LocalBar
+        category.contains("Packaging", ignoreCase = true) -> Icons.Default.AllInbox
+        category.contains("Chemical", ignoreCase = true) -> Icons.Default.Science
         else -> Icons.Default.Inventory
     }
 }
