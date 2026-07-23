@@ -1,0 +1,6 @@
+{
+  "name": "NOTES STOCK",
+  "description": "A simple and clean inventory manager for recording stock in/out by category (Dry, Chilled, Frozen, Bar) with low stock summaries and monthly reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
