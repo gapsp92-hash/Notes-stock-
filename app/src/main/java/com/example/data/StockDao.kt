@@ -13,6 +13,12 @@ interface StockDao {
     @Query("SELECT * FROM stock_items ORDER BY name ASC")
     fun getAllItems(): Flow<List<StockItem>>
 
+    @Query("SELECT * FROM stock_items ORDER BY id ASC")
+    suspend fun getAllItemsSnapshot(): List<StockItem>
+
+    @Query("SELECT * FROM stock_transactions ORDER BY timestamp DESC")
+    suspend fun getAllTransactionsSnapshot(): List<StockTransaction>
+
     @Query("SELECT * FROM stock_items WHERE category = :category ORDER BY name ASC")
     fun getItemsByCategory(category: String): Flow<List<StockItem>>
 

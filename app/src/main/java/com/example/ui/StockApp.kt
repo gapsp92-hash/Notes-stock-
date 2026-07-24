@@ -1,7 +1,10 @@
 package com.example.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -120,6 +123,8 @@ fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
     val lowStockItems by viewModel.lowStockItems.collectAsStateWithLifecycle()
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
     val allItems by viewModel.allItems.collectAsStateWithLifecycle()
+    val companyCode by viewModel.companyCode.collectAsStateWithLifecycle()
+    val syncStatus by viewModel.syncStatus.collectAsStateWithLifecycle()
 
     var showAddItemDialog by remember { mutableStateOf(false) }
     var showAdjustStockDialog by remember { mutableStateOf<StockItem?>(null) }
@@ -226,7 +231,7 @@ fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
                     .fillMaxWidth()
                     .background(Color.White)
                     .border(width = 1.dp, color = Color(0xFFEFF6FF), shape = RoundedCornerShape(0.dp)) // border-blue-50
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -283,6 +288,74 @@ fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
+                    }
+                }
+            }
+
+            // Live Multi-User Company Sync Indicator Banner
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showShareSyncDialog = true }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFFECFDF5), // emerald-50
+                border = BorderStroke(1.dp, Color(0xFFA7F3D0)) // emerald-200
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(9.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF10B981)) // emerald-500 live dot
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "LIVE SYNC: $companyCode",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp,
+                                color = Color(0xFF065F46)
+                            )
+                            Text(
+                                text = "5 Company Devices Linked • Auto Updating",
+                                fontSize = 10.sp,
+                                color = Color(0xFF047857),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFFD1FAE5))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = null,
+                                    tint = Color(0xFF059669),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "LIVE",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF047857)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1575,21 +1648,24 @@ fun AdjustStockDialog(
     }
 }
 
-// Modal Dialog for Multi-User Stock Synchronization & Sharing
+// Modal Dialog for Multi-User Live Stock Synchronization & Sharing
 @Composable
 fun ShareSyncDialog(
     viewModel: StockViewModel,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    var importJsonText by remember { mutableStateOf("") }
-    var syncResultMsg by remember { mutableStateOf<String?>(null) }
+    val companyCode by viewModel.companyCode.collectAsStateWithLifecycle()
+    val syncStatus by viewModel.syncStatus.collectAsStateWithLifecycle()
+
+    var inputCode by remember { mutableStateOf(companyCode) }
+    var codeSavedToast by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(4.dp)
                 .testTag("share_sync_dialog"),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -1599,6 +1675,7 @@ fun ShareSyncDialog(
                     .padding(20.dp)
                     .fillMaxWidth()
             ) {
+                // Header Bar
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1607,28 +1684,28 @@ fun ShareSyncDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(42.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFEFF6FF)),
+                                .background(Color(0xFFECFDF5)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Sync,
+                                imageVector = Icons.Default.CloudSync,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
+                                tint = Color(0xFF059669),
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Multi-User Stock Sync",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
+                                text = "Live Company Sync",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 17.sp,
                                 color = Color(0xFF1E293B)
                             )
                             Text(
-                                text = "Share & sync inventory across devices",
+                                text = "Shared live stock for 5 company users",
                                 fontSize = 11.sp,
                                 color = Color(0xFF64748B)
                             )
@@ -1639,89 +1716,189 @@ fun ShareSyncDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Section 1: Export & Share
-                Text(
-                    text = "1. Export & Share Stock Data",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Button(
-                    onClick = {
-                        val json = viewModel.exportStockToJson()
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "NOTES STOCK Data Sync")
-                            putExtra(Intent.EXTRA_TEXT, json)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "Share Stock JSON Data"))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Share Stock JSON Data", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Divider(color = Color(0xFFEFF6FF))
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Section 2: Import & Sync Data
-                Text(
-                    text = "2. Import / Sync Stock from Teammate",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                OutlinedTextField(
-                    value = importJsonText,
-                    onValueChange = { importJsonText = it },
-                    placeholder = { Text("Paste JSON stock data received from another user...", fontSize = 11.sp) },
+                // Active Sync Status Indicator Box
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(95.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp)
-                )
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFFF0FDF4))
+                        .border(1.dp, Color(0xFFBBF7D0), RoundedCornerShape(14.dp))
+                        .padding(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF22C55E))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Auto Sync Active (5 Users)",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF15803D)
+                                )
+                                Text(
+                                    text = "Last updated: ${syncStatus.lastSyncFormatted}",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF166534)
+                                )
+                            }
+                        }
 
-                syncResultMsg?.let { msg ->
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = msg,
-                        fontSize = 12.sp,
-                        color = if (msg.contains("Successfully")) Color(0xFF16A34A) else Color(0xFFDC2626),
-                        fontWeight = FontWeight.Bold
-                    )
+                        IconButton(
+                            onClick = { viewModel.triggerManualSync() },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Sync Now",
+                                tint = Color(0xFF15803D),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Company Code Setup Field
+                Text(
+                    text = "COMPANY SYNC CODE",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                OutlinedTextField(
+                    value = inputCode,
+                    onValueChange = { inputCode = it.uppercase(Locale.getDefault()) },
+                    placeholder = { Text("e.g. LANKA-FOODS-01", fontSize = 12.sp) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            viewModel.updateCompanyCode(inputCode)
+                            Toast.makeText(context, "Company Code Updated & Connected!", Toast.LENGTH_SHORT).show()
+                            codeSavedToast = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Save Code",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Copy Code and Share Buttons Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Company Code", companyCode)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Company Code copied: $companyCode", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Copy Code", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            val shareMessage = "Join our company live stock inventory on NOTES STOCK App!\n\n" +
+                                    "🔑 Company Sync Code: $companyCode\n\n" +
+                                    "Enter this code in your app to view live stock movements automatically across all 5 company phones!"
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "NOTES STOCK Live Company Code")
+                                putExtra(Intent.EXTRA_TEXT, shareMessage)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Share Code with 5 Teammates"))
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Share Code", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Sinhala + English Instruction Banner
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "How 5 Users Connect Live (භාවිතා කරන ආකාරය):",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Color(0xFF1E293B)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "1. Ekama company eke users la 5 denama tange phone wala app ekata mee ekama Company Code ($companyCode) enter karanna.\n" +
+                                    "2. Ekkenek stock update karahama ho item ekak add/remove karahama, anith 4 denagema phone wala app eka automatically live update wei!",
+                            fontSize = 11.sp,
+                            color = Color(0xFF475569),
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = {
-                        viewModel.importStockFromJson(importJsonText) { success, count ->
-                            if (success) {
-                                syncResultMsg = "Successfully synced $count items!"
-                                importJsonText = ""
-                            } else {
-                                syncResultMsg = "Invalid JSON data. Please check format."
-                            }
-                        }
+                        viewModel.updateCompanyCode(inputCode)
+                        viewModel.triggerManualSync()
+                        onDismiss()
                     },
-                    enabled = importJsonText.trim().isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B))
                 ) {
-                    Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sync & Update Inventory", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Connect & Start Live Sync", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

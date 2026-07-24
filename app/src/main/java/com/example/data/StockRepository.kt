@@ -2,7 +2,7 @@ package com.example.data
 
 import kotlinx.coroutines.flow.Flow
 
-class StockRepository(private val stockDao: StockDao) {
+class StockRepository(val stockDao: StockDao) {
     val allItems: Flow<List<StockItem>> = stockDao.getAllItems()
     val lowStockItems: Flow<List<StockItem>> = stockDao.getLowStockItems()
     val allTransactions: Flow<List<StockTransaction>> = stockDao.getAllTransactions()

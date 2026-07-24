@@ -1,11 +1,14 @@
 package com.example.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.data.CompanySyncManager
 import com.example.data.StockItem
 import com.example.data.StockRepository
 import com.example.data.StockTransaction
+import com.example.data.SyncStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,9 +24,17 @@ import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class StockViewModel(private val repository: StockRepository) : ViewModel() {
+class StockViewModel(
+    private val repository: StockRepository,
+    context: Context
+) : ViewModel() {
 
     val categories = listOf("Dry Items", "Chilled Items", "Frozen Items", "Bar Items", "Packaging Items", "Chemical Items")
+
+    val syncManager = CompanySyncManager(context, repository, viewModelScope)
+
+    val companyCode: StateFlow<String> = syncManager.companyCode
+    val syncStatus: StateFlow<SyncStatus> = syncManager.syncStatus
 
     private val _selectedCategory = MutableStateFlow("Dry Items")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
@@ -64,6 +75,14 @@ class StockViewModel(private val repository: StockRepository) : ViewModel() {
         _selectedCategory.value = category
     }
 
+    fun updateCompanyCode(newCode: String) {
+        syncManager.updateCompanyCode(newCode)
+    }
+
+    fun triggerManualSync() {
+        syncManager.triggerManualSync()
+    }
+
     fun addItem(name: String, category: String, quantity: Int, minLimit: Int, note: String) {
         viewModelScope.launch {
             val newItem = StockItem(
@@ -73,7 +92,6 @@ class StockViewModel(private val repository: StockRepository) : ViewModel() {
                 minLimit = minLimit
             )
             val id = repository.insertItem(newItem)
-            // Log initial transaction if quantity > 0
             if (quantity > 0) {
                 repository.recordMovement(
                     itemId = id.toInt(),
@@ -82,30 +100,35 @@ class StockViewModel(private val repository: StockRepository) : ViewModel() {
                     note = if (note.isEmpty()) "Initial stock" else note
                 )
             }
+            syncManager.onLocalDataChanged()
         }
     }
 
     fun recordIn(itemId: Int, quantity: Int, note: String) {
         viewModelScope.launch {
             repository.recordMovement(itemId, "IN", quantity, note)
+            syncManager.onLocalDataChanged()
         }
     }
 
     fun recordOut(itemId: Int, quantity: Int, note: String) {
         viewModelScope.launch {
             repository.recordMovement(itemId, "OUT", quantity, note)
+            syncManager.onLocalDataChanged()
         }
     }
 
     fun updateItem(item: StockItem) {
         viewModelScope.launch {
             repository.updateItem(item)
+            syncManager.onLocalDataChanged()
         }
     }
 
     fun deleteItem(itemId: Int) {
         viewModelScope.launch {
             repository.deleteItem(itemId)
+            syncManager.onLocalDataChanged()
         }
     }
 
@@ -155,6 +178,7 @@ class StockViewModel(private val repository: StockRepository) : ViewModel() {
                     }
                     count++
                 }
+                syncManager.onLocalDataChanged()
                 onComplete(true, count)
             } catch (e: Exception) {
                 onComplete(false, 0)
@@ -212,12 +236,15 @@ class StockViewModel(private val repository: StockRepository) : ViewModel() {
         return builder.toString()
     }
 
-    // Factory to instantiate ViewModel with Repository
-    class Factory(private val repository: StockRepository) : ViewModelProvider.Factory {
+    // Factory to instantiate ViewModel with Context and Repository
+    class Factory(
+        private val context: Context,
+        private val repository: StockRepository
+    ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(StockViewModel::class.java)) {
                 @Suppress("UNCHECKED_CAST")
-                return StockViewModel(repository) as T
+                return StockViewModel(repository, context) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

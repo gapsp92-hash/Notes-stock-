@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
     setContent {
       MyApplicationTheme {
         val viewModel: StockViewModel = viewModel(
-          factory = StockViewModel.Factory(repository)
+          factory = StockViewModel.Factory(applicationContext, repository)
         )
         StockApp(
           viewModel = viewModel,
