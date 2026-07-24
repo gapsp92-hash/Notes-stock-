@@ -1850,7 +1850,7 @@ fun ShareSyncDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Sinhala + English Instruction Banner
+                // English Instructions Banner
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
@@ -1867,7 +1867,7 @@ fun ShareSyncDialog(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "How 5 Users Connect Live (භාවිතා කරන ආකාරය):",
+                                text = "How 5 Users Connect Live:",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
                                 color = Color(0xFF1E293B)
@@ -1875,8 +1875,8 @@ fun ShareSyncDialog(
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "1. Ekama company eke users la 5 denama tange phone wala app ekata mee ekama Company Code ($companyCode) enter karanna.\n" +
-                                    "2. Ekkenek stock update karahama ho item ekak add/remove karahama, anith 4 denagema phone wala app eka automatically live update wei!",
+                            text = "1. All 5 users in your company enter this same Company Code ($companyCode) in their app settings.\n" +
+                                    "2. Whenever anyone adds, removes, or updates stock items, all 5 company devices synchronize automatically in real-time!",
                             fontSize = 11.sp,
                             color = Color(0xFF475569),
                             lineHeight = 16.sp
