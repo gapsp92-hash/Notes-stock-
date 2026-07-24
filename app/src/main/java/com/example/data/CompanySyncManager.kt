@@ -218,48 +218,72 @@ class CompanySyncManager(
     }
 
     private suspend fun applyRemoteDataToLocal(jsonObj: JSONObject) {
-        val itemsArray = jsonObj.optJSONArray("items") ?: JSONArray()
-        val txArray = jsonObj.optJSONArray("transactions") ?: JSONArray()
+        try {
+            val itemsArray = jsonObj.optJSONArray("items") ?: JSONArray()
+            val txArray = jsonObj.optJSONArray("transactions") ?: JSONArray()
 
-        val existingItems = repository.stockDao.getAllItemsSnapshot().associateBy { it.id }
+            val existingItems = repository.stockDao.getAllItemsSnapshot()
+            val existingItemsByName = existingItems.associateBy { it.name.trim().lowercase(Locale.getDefault()) }
 
-        for (i in 0 until itemsArray.length()) {
-            val obj = itemsArray.getJSONObject(i)
-            val id = obj.optInt("id", 0)
-            val name = obj.getString("name")
-            val category = obj.optString("category", "Dry Items")
-            val quantity = obj.optInt("quantity", 0)
-            val minLimit = obj.optInt("minLimit", 5)
+            for (i in 0 until itemsArray.length()) {
+                val obj = itemsArray.optJSONObject(i) ?: continue
+                val name = obj.optString("name", "").trim()
+                if (name.isEmpty()) continue
 
-            val item = StockItem(
-                id = id,
-                name = name,
-                category = category,
-                quantity = quantity,
-                minLimit = minLimit
-            )
+                val category = obj.optString("category", "Dry Items")
+                val quantity = obj.optInt("quantity", 0)
+                val minLimit = obj.optInt("minLimit", 5)
 
-            if (existingItems.containsKey(id)) {
-                repository.stockDao.updateItem(item)
-            } else {
-                repository.stockDao.insertItem(item)
+                val existing = existingItemsByName[name.lowercase(Locale.getDefault())]
+                if (existing != null) {
+                    val updated = existing.copy(
+                        category = category,
+                        quantity = quantity,
+                        minLimit = minLimit
+                    )
+                    repository.stockDao.updateItem(updated)
+                } else {
+                    val newItem = StockItem(
+                        id = 0,
+                        name = name,
+                        category = category,
+                        quantity = quantity,
+                        minLimit = minLimit
+                    )
+                    repository.stockDao.insertItem(newItem)
+                }
             }
-        }
 
-        for (i in 0 until txArray.length()) {
-            val obj = txArray.getJSONObject(i)
-            val tx = StockTransaction(
-                id = obj.optInt("id", 0),
-                itemId = obj.optInt("itemId", 0),
-                itemName = obj.optString("itemName", ""),
-                category = obj.optString("category", ""),
-                type = obj.optString("type", "IN"),
-                quantityChanged = obj.optInt("quantityChanged", 0),
-                balanceAfter = obj.optInt("balanceAfter", 0),
-                timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
-                note = obj.optString("note", "")
-            )
-            repository.stockDao.insertTransaction(tx)
+            val existingTxs = repository.stockDao.getAllTransactionsSnapshot()
+            val existingTxKeys = existingTxs.map { "${it.itemName}_${it.timestamp}_${it.quantityChanged}_${it.type}" }.toSet()
+
+            for (i in 0 until txArray.length()) {
+                val obj = txArray.optJSONObject(i) ?: continue
+                val itemName = obj.optString("itemName", "")
+                val timestamp = obj.optLong("timestamp", 0L)
+                val qty = obj.optInt("quantityChanged", 0)
+                val type = obj.optString("type", "IN")
+                val key = "${itemName}_${timestamp}_${qty}_${type}"
+
+                if (existingTxKeys.contains(key)) {
+                    continue
+                }
+
+                val tx = StockTransaction(
+                    id = 0,
+                    itemId = obj.optInt("itemId", 0),
+                    itemName = itemName,
+                    category = obj.optString("category", ""),
+                    type = type,
+                    quantityChanged = qty,
+                    balanceAfter = obj.optInt("balanceAfter", 0),
+                    timestamp = if (timestamp > 0) timestamp else System.currentTimeMillis(),
+                    note = obj.optString("note", "")
+                )
+                repository.stockDao.insertTransaction(tx)
+            }
+        } catch (e: Exception) {
+            // Protect against corrupted remote JSON without crashing
         }
     }
 }
