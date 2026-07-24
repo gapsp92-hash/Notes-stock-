@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,11 +39,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.R
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -231,25 +234,35 @@ fun StockApp(viewModel: StockViewModel, modifier: Modifier = Modifier) {
                     .fillMaxWidth()
                     .background(Color.White)
                     .border(width = 1.dp, color = Color(0xFFEFF6FF), shape = RoundedCornerShape(0.dp)) // border-blue-50
-                    .padding(horizontal = 24.dp, vertical = 14.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "INVENTORY MANAGER",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        letterSpacing = 1.5.sp
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = painterResource(id = R.drawable.notes_app_logo),
+                        contentDescription = "NOTES Logo",
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "NOTES STOCK",
-                        color = Color(0xFF1E293B), // slate-800
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp
-                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "INVENTORY MANAGER",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            letterSpacing = 1.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(1.dp))
+                        Text(
+                            text = "NOTES STOCK",
+                            color = Color(0xFF1E293B), // slate-800
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 19.sp
+                        )
+                    }
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
