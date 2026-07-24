@@ -1,6 +1,7 @@
 package com.example.data
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -15,16 +16,29 @@ abstract class StockDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): StockDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    StockDatabase::class.java,
-                    "stock_database"
-                )
-                .fallbackToDestructiveMigration()
-                .build()
+                val instance = try {
+                    Room.databaseBuilder(
+                        context.applicationContext,
+                        StockDatabase::class.java,
+                        "stock_database"
+                    )
+                    .fallbackToDestructiveMigration(true)
+                    .build()
+                } catch (e: Exception) {
+                    Log.e("StockDatabase", "Failed to build database, recreating", e)
+                    context.applicationContext.deleteDatabase("stock_database")
+                    Room.databaseBuilder(
+                        context.applicationContext,
+                        StockDatabase::class.java,
+                        "stock_database"
+                    )
+                    .fallbackToDestructiveMigration(true)
+                    .build()
+                }
                 INSTANCE = instance
                 instance
             }
         }
     }
 }
+

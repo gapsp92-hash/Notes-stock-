@@ -62,15 +62,23 @@ class CompanySyncManager(
     }
 
     private fun getSavedCompanyCode(): String {
-        return prefs.getString("company_code", "COMPANY-LANKA-01") ?: "COMPANY-LANKA-01"
+        return try {
+            prefs.getString("company_code", "COMPANY-LANKA-01") ?: "COMPANY-LANKA-01"
+        } catch (e: Exception) {
+            "COMPANY-LANKA-01"
+        }
     }
 
     fun updateCompanyCode(newCode: String) {
-        val sanitized = newCode.trim().uppercase(Locale.getDefault()).ifEmpty { "COMPANY-LANKA-01" }
-        prefs.edit().putString("company_code", sanitized).apply()
-        _companyCode.value = sanitized
-        lastRemoteTimestamp = 0L
-        triggerManualSync()
+        try {
+            val sanitized = newCode.trim().uppercase(Locale.getDefault()).ifEmpty { "COMPANY-LANKA-01" }
+            prefs.edit().putString("company_code", sanitized).apply()
+            _companyCode.value = sanitized
+            lastRemoteTimestamp = 0L
+            triggerManualSync()
+        } catch (e: Exception) {
+            // Ignore pref write error
+        }
     }
 
     fun startLiveSyncLoop() {
@@ -162,58 +170,62 @@ class CompanySyncManager(
     }
 
     private suspend fun performSyncPush() {
-        val code = _companyCode.value
-        val now = System.currentTimeMillis()
+        try {
+            val code = _companyCode.value
+            val now = System.currentTimeMillis()
 
-        val items = repository.stockDao.getAllItemsSnapshot()
-        val transactions = repository.stockDao.getAllTransactionsSnapshot()
+            val items = repository.stockDao.getAllItemsSnapshot()
+            val transactions = repository.stockDao.getAllTransactionsSnapshot()
 
-        val payload = JSONObject()
-        payload.put("companyCode", code)
-        payload.put("timestamp", now)
+            val payload = JSONObject()
+            payload.put("companyCode", code)
+            payload.put("timestamp", now)
 
-        val itemsArray = JSONArray()
-        for (item in items) {
-            val obj = JSONObject()
-            obj.put("id", item.id)
-            obj.put("name", item.name)
-            obj.put("category", item.category)
-            obj.put("quantity", item.quantity)
-            obj.put("minLimit", item.minLimit)
-            itemsArray.put(obj)
-        }
-        payload.put("items", itemsArray)
-
-        val txArray = JSONArray()
-        for (tx in transactions.take(50)) { // Sync recent 50 transactions
-            val obj = JSONObject()
-            obj.put("id", tx.id)
-            obj.put("itemId", tx.itemId)
-            obj.put("itemName", tx.itemName)
-            obj.put("category", tx.category)
-            obj.put("type", tx.type)
-            obj.put("quantityChanged", tx.quantityChanged)
-            obj.put("balanceAfter", tx.balanceAfter)
-            obj.put("timestamp", tx.timestamp)
-            obj.put("note", tx.note)
-            txArray.put(obj)
-        }
-        payload.put("transactions", txArray)
-
-        val base64Payload = Base64.encodeToString(payload.toString().toByteArray(StandardCharsets.UTF_8), Base64.NO_WRAP)
-        val url = "https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/$appKey/$code/$base64Payload"
-
-        val mediaType = "text/plain".toMediaType()
-        val request = Request.Builder()
-            .url(url)
-            .header("Content-Length", "0")
-            .post("".toRequestBody(mediaType))
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) {
-                lastRemoteTimestamp = now
+            val itemsArray = JSONArray()
+            for (item in items) {
+                val obj = JSONObject()
+                obj.put("id", item.id)
+                obj.put("name", item.name)
+                obj.put("category", item.category)
+                obj.put("quantity", item.quantity)
+                obj.put("minLimit", item.minLimit)
+                itemsArray.put(obj)
             }
+            payload.put("items", itemsArray)
+
+            val txArray = JSONArray()
+            for (tx in transactions.take(50)) { // Sync recent 50 transactions
+                val obj = JSONObject()
+                obj.put("id", tx.id)
+                obj.put("itemId", tx.itemId)
+                obj.put("itemName", tx.itemName)
+                obj.put("category", tx.category)
+                obj.put("type", tx.type)
+                obj.put("quantityChanged", tx.quantityChanged)
+                obj.put("balanceAfter", tx.balanceAfter)
+                obj.put("timestamp", tx.timestamp)
+                obj.put("note", tx.note)
+                txArray.put(obj)
+            }
+            payload.put("transactions", txArray)
+
+            val base64Payload = Base64.encodeToString(payload.toString().toByteArray(StandardCharsets.UTF_8), Base64.NO_WRAP)
+            val url = "https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/$appKey/$code/$base64Payload"
+
+            val mediaType = "text/plain".toMediaType()
+            val request = Request.Builder()
+                .url(url)
+                .header("Content-Length", "0")
+                .post("".toRequestBody(mediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    lastRemoteTimestamp = now
+                }
+            }
+        } catch (e: Exception) {
+            // Protect against push errors
         }
     }
 

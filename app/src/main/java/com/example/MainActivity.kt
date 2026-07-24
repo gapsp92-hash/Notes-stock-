@@ -1,6 +1,7 @@
 package com.example
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,9 +19,16 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
 
-    // Initialize Database and Repository
-    val database = StockDatabase.getDatabase(applicationContext)
-    val repository = StockRepository(database.stockDao())
+    val repository = try {
+      val database = StockDatabase.getDatabase(applicationContext)
+      StockRepository(database.stockDao())
+    } catch (e: Exception) {
+      Log.e("MainActivity", "Error initializing database on startup", e)
+      // Delete database and try again cleanly
+      applicationContext.deleteDatabase("stock_database")
+      val fallbackDb = StockDatabase.getDatabase(applicationContext)
+      StockRepository(fallbackDb.stockDao())
+    }
 
     setContent {
       MyApplicationTheme {
@@ -35,3 +43,4 @@ class MainActivity : ComponentActivity() {
     }
   }
 }
+
